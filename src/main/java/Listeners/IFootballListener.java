@@ -1,3 +1,5 @@
+package Listeners;
+
 public interface IFootballListener {
     void gameStarted(FootballGame game);
     void gameEnded(FootballGame game);
