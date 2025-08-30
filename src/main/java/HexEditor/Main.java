@@ -4,6 +4,11 @@ import java.io.IOException;
 import java.nio.file.*;
 
 public class Main {
+
+    private static final int BYTES_PER_ROW = 16;
+    private static final int BITS_PER_BYTE = 8;
+    private static final int PRINTED_ARRAY_SPACING = 3;
+
     public static void main(String[] args) throws IOException {
 
         String filename = args[args.length - 1];
@@ -37,61 +42,68 @@ public class Main {
     }
 
     private static void writeAsString(String file) {
-        StringBuilder output = new StringBuilder();
-        output.append("Address  0  1  2  3  4  5  6  7  8  9  a  b  c  d  e  f    Dump                               |")
-                .append(System.lineSeparator());
-
-        int[][] array = get2DimensionalArray(file);
-
-        int legendCounter = 0;
-        for (int i = 0; i < array.length; i++) {
-            output.append(String.format("%08X", legendCounter));
-            legendCounter += 16;
-            for (int j = 0; j < array[i].length; j++) {
-                output.append(" ").append(String.format("%02x",(int)array[i][j]));
-            }
-
-            output.append("   ");
-            for (int j = 0; j < array[i].length; j++) {
-                //If it is the last row and we only want to do it once before the first letter
-                if (array.length-1 == i && j == 0) {
-                    int requiredArrayLength = 16;
-                    //Each array spot takes up 3 places
-                    int lastRowSpacesToAdd = (requiredArrayLength - array[array.length-1].length) * 3;
-                    output.append(" ".repeat(lastRowSpacesToAdd));
-                }
-
-                if (array[i][j] > 33 & array[i][j] < 126) {
-                    output.append((char) array[i][j]);
-                } else {
-                    output.append(".");
-                }
-            }
-            //If not the last row
-            if (!(array.length-1 == i)) {
-                output.append(System.lineSeparator());
-            }
+        StringBuilder output = new StringBuilder("Address ");
+        for (int i = 0; i < BYTES_PER_ROW; i++) {
+            output.append(String.format("%2x ", i));
         }
-        System.out.println(output.toString());
+        output.append("     Dump").append(System.lineSeparator());
+
+        int[][] array = splitIntoRows(file);
+
+        int address = 0;
+        int counter = 0;
+
+        for (int[] row : array) {
+            output.append(String.format("%08X ", address));
+            address += BYTES_PER_ROW;
+            //Print row HEX values
+            for (int value : row) {
+                output.append(String.format("%02X ", value));
+            }
+
+            output.append("    ");
+
+            int arrayLastRow = array.length - 1;
+            boolean lastRowPrinted = false;
+            //Print String Dump
+            for (int value : row) {
+                if (arrayLastRow == counter && !lastRowPrinted) {
+                    lastRowPrinted = true;
+                    int spacing = (BYTES_PER_ROW - array[arrayLastRow].length) * PRINTED_ARRAY_SPACING;
+                    output.append(" ".repeat(spacing));
+                }
+
+                char temp = Character.isISOControl(value) ? '.' : (char) value;
+                output.append(temp);
+            }
+
+            boolean isLastRow = array.length-1 == counter;
+            if (!(isLastRow)) output.append(System.lineSeparator());
+            counter++;
+        }
+        System.out.println(output);
     }
 
     private static void writeAsHex(String file) {
-        StringBuilder output = new StringBuilder();
-        output.append("Address  0  1  2  3  4  5  6  7  8  9  a  b  c  d  e  f")
-                .append(System.lineSeparator());
+        StringBuilder output = new StringBuilder("Address  ");
+        for (int i = 0; i < BYTES_PER_ROW; i++) {
+            output.append(String.format("%x  ", i));
+        }
+        output.append((System.lineSeparator()));
 
-        int[][] array = get2DimensionalArray(file);
+        int[][] array = splitIntoRows(file);
 
-        int legendCounter = 0;
-        for (int i = 0; i < array.length; i++) {
-            output.append(String.format("%08X", legendCounter));
-            legendCounter += 16;
-            for (int j = 0; j < array[i].length; j++) {
-                output.append(" ").append(String.format("%02x",(int)array[i][j]));
+        int address = 0;
+        for (int[] row : array) {
+            output.append(String.format("%08X ", address));
+            address += BYTES_PER_ROW;
+
+            for (int value : row) {
+                output.append(String.format("%02X ", value));
             }
             output.append(System.lineSeparator());
         }
-        System.out.println(output.toString());
+        System.out.println(output);
 
     }
 
@@ -100,32 +112,32 @@ public class Main {
         output.append("Address     0        1        2        3        4        5        6        7        8        9        a        b        c        d        e        f")
               .append(System.lineSeparator());
 
-        int[][] array = get2DimensionalArray(file);
+        int[][] array = splitIntoRows(file);
 
         //Print each CHAR in a binary representation - 16 per line - First element of each line should be part of the legend
         int legendCounter = 0;
         for (int i = 0; i < array.length; i++) {
             output.append(String.format("%08X", legendCounter));
-            legendCounter += 16;
+            legendCounter += BYTES_PER_ROW;
             for (int j = 0; j < array[i].length; j++) {
-                output.append(" ").append(addZeroBinaryPrefix(Integer.toBinaryString(array[i][j])));
+                output.append(" ").append(formatBinaryByte(Integer.toBinaryString(array[i][j])));
             }
             output.append(System.lineSeparator());
         }
         System.out.println(output.toString());
     }
 
-    private static int[][] get2DimensionalArray(String file) {
+    private static int[][] splitIntoRows(String file) {
 
-        int rows = file.length() / 16;
-        int lastRow = rows % 16;
+        int rows = file.length() / BYTES_PER_ROW;
+        int lastRow = file.length() % BYTES_PER_ROW;
         //Added one for the last row
         int[][] array = new int[rows+1][];
 
         //fill everything except for lastRow
         int counter = 0;
         for (int i = 0; i < rows; i++) {
-            array[i] = new int[16];
+            array[i] = new int[BYTES_PER_ROW];
             for (int j = 0; j < array[i].length; j++) {
                 array[i][j] = file.charAt(counter);
                 counter++;
@@ -142,13 +154,12 @@ public class Main {
         return array;
     }
 
-    private static String addZeroBinaryPrefix(String binaryString) {
-        int binaryLength = 8;
-        if (binaryString.length() == binaryLength) {
+    private static String formatBinaryByte(String binaryString) {
+        if (binaryString.length() == BITS_PER_BYTE) {
             return binaryString;
         }
 
-        int requiredZeros = binaryLength - binaryString.length();
+        int requiredZeros = BITS_PER_BYTE - binaryString.length();
         return  "0".repeat(requiredZeros).concat(binaryString);
     }
 }
