@@ -116,15 +116,15 @@ public class Main {
 
         //Print each CHAR in a binary representation - 16 per line - First element of each line should be part of the legend
         int legendCounter = 0;
-        for (int i = 0; i < array.length; i++) {
+        for (int[] ints : array) {
             output.append(String.format("%08X", legendCounter));
             legendCounter += BYTES_PER_ROW;
-            for (int j = 0; j < array[i].length; j++) {
-                output.append(" ").append(formatBinaryByte(Integer.toBinaryString(array[i][j])));
+            for (int anInt : ints) {
+                output.append(" ").append(formatBinaryByte(Integer.toBinaryString(anInt)));
             }
             output.append(System.lineSeparator());
         }
-        System.out.println(output.toString());
+        System.out.println(output);
     }
 
     private static int[][] splitIntoRows(String file) {
